@@ -5,6 +5,7 @@ define("DEV_MODE", 1);
 define("PRD_MODE", 2);
 define("__MODE__", DEV_MODE); // for easy switching upon deployment
 
+
 class database
 {
   static private $pdo;
