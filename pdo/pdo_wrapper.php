@@ -1,228 +1,199 @@
 <?php
 
-define("DATABASE_ERROR", -1);
-define("DEV_MODE", 1);
-define("PRD_MODE", 2);
-define("__MODE__", DEV_MODE); // for easy switching upon deployment
+  //pdo wrapper
 
+  class db {
 
-class database
-{
-  static private $pdo;
-  static private $pso;
-  static private $conn;
-  static private $result;
-  static public  $error_msg;
-  static public  $error_code;
-  static public  $state;
-  
-  static private function get_config()
-  {
-    $db = array();
-    switch(__MODE__)
-    {
-      case DEV_MODE:
-        $db["db_name"]  = "<database name here>";
-        $db["host_ip"]  = "localhost";
-        $db["port_num"] = "3306";
-        $db["username"] = "<username here>";
-        $db["password"] = "<password here>";
-        break;
+    private $config;
+    private $pdo;
+    private $pso;
+    private $conn;
+    private $result;
+    public  $error_msg;
+    public  $error_code;
+    public  $state;
 
-      case PRD_MODE:
-        $db["db_name"]  = "<database name here>";
-        $db["host_ip"]  = "localhost";
-        $db["port_num"] = "3306";
-        $db["username"] = "<username here>";
-        $db["password"] = "<password here>";
-        break;
-
-      default: break;
+    function __construct(){
+      $this->config = array();
+      $this->pdo = null;
+      $this->pso = null;
+      $this->conn = null;
+      $this->result = null;
+      $this->error_msg = '';
+      $this->error_code = 0;
+      $this->state = 'Database Object Initialized';
     }
-    return $db;
-  }//end method database::get_config()
 
-  static private function is_connected()
-  {
-    if(database::$pdo != null)
-      return true;
-    else
-      return false;
-  }//end method database::is_connected()
-
-  static private function connect()
-  {   
-    $db = database::get_config();
-    $db_name = $db["db_name"];
-    $host_ip = $db["host_ip"];
-    $port = $db["port_num"];
-    $username = $db["username"];
-    $password = $db["password"];
-
-    if( $host_ip != null && 
-      $username != null )
-    {
-      try
-      {
-        //whether or not to use port number
-        if($port != null)
-          database::$conn = "mysql:dbname=$db_name;host=$host_ip;port=$port;";
-        else
-          database::$conn = "mysql:dbname=$db_name;host=$host_ip;"; //port num defaults to 3306
-
-        //Creates the actual connection:
-        database::$pdo = new PDO(database::$conn, $username, $password);//, array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"));
-        
-        //update our state message
-        if(database::is_connected())
-          database::$state = "Connected to the database";
-        else
-          database::$state = "Not connected";
-      }
-      catch(PDOException $e)
-      {
-        database::$pdo = null;
-        database::$pso = null;
-        database::$result = null;
-        database::$error_code = $e->getCode();
-        database::$error_msg = $e->getMessage();
-        database::$state = "Exception occurred";
+    public function set_config($config=null){
+      if($config !== null){
+        $this->config["db_name"] = $config["db_name"];
+        $this->config["host_ip"] = $config["host_ip"];
+        $this->config["port_num"] = $config["port_num"];
+        $this->config["username"] = $config["username"];
+        $this->config["password"] = $config["password"];
       }
     }
-    else
-    {
-      database::$pdo = null;
-      database::$pso = null;
-      database::$result = null;
-      database::$error_code = DATABASE_ERROR;
-      database::$error_msg = "";
 
-      if($db_name == null)
-        database::$error_msg .= " Database name was missing! ";
-
-      if($host_ip == null)
-        database::$error_msg .= " MySQL Server IP was missing! ";
-
-      if($username == null)
-        database::$error_msg .= " Username was missing! ";
-
-      if($password == null)
-        database::$error_msg .= " Password was missing! ";
-
-      database::$state = "Not connected";
+    private function get_config(){
+      return $this->config;
     }
 
-    //regardless of success or failure return the current connection status
-    return database::is_connected();
-  }//end method database::connect()
+    public function connect(){
+      $db = $this->get_config();
+      $db_name = $db["db_name"];
+      $host_ip = $db["host_ip"];
+      $port = $db["port_num"];
+      $username = $db["username"];
+      $password = $db["password"];
 
-  static private function autoconnect()
-  {
-    if(database::is_connected())
-      return true;
-    else
-      return database::connect();
-  }//end method database::autoconnect()
-
-  static public function query($sql=null, $params=null)
-  {   
-    if(database::autoconnect())
-      return database::_query($sql, $params);
-    else
-      return DATABASE_ERROR;
-  }//end method database::query()
-
-  //Note: this function is for performing SELECT
-  //Note: this function will return a sql result set in the form of an array or DATABASE_ERROR on failure
-  static private function _query($sql=null, $params=null)
-  {
-    //Perform a secure query
-    if($sql != null && $params != null)
-    {
-      try
+      if( $host_ip != null && 
+          $username != null )
       {
-        database::$pso = database::$pdo->prepare($sql);
-        if(database::$pso !== false)
+        try
         {
-          database::$pso->execute($params);
-          database::$result = database::$pso->fetchAll(); // return results as array
-          database::$state = "Connected to the database"; // generic "system ok" message
-          return database::$result;
+          //whether or not to use port number
+          if($port != null)
+            $this->conn = "mysql:dbname=$db_name;host=$host_ip;port=$port;";
+          else
+            $this->conn = "mysql:dbname=$db_name;host=$host_ip;"; //port num defaults to 3306
+
+          //Creates the actual connection:
+          $this->pdo = new PDO($this->conn, $username, $password);//, array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"));
+          
+          //update our state message
+          if($this->is_connected())
+            $this->state = "Connected to the database";
+          else
+            $this->state = "Not connected";
         }
-        else
+        catch(PDOException $e)
         {
-          return DATABASE_ERROR;
+          $this->pdo = null;
+          $this->pso = null;
+          $this->result = null;
+          $this->error_code = $e->getCode();
+          $this->error_msg = $e->getMessage();
+          $this->state = "Exception occurred during PDO connection!";
         }
-      }
-      catch(PDOException $e)
-      {
-        database::$error_code = $e->getCode;
-        database::$error_msg = $e->getMessage();
-        database::$state = "Exception occurred";
-      }
-      return DATABASE_ERROR;
-    }
-    else if($sql != null && $params == null) //insecure query 
-    {
-      database::$pso = database::$pdo->query($sql); // this is NOT a prepared statement
-      if(database::$pso !== false)
-      {
-        database::$result = database::$pso->fetchAll(); // return results as array
-        database::$state = "Connected to the database"; // generic "system ok" message
-        return database::$result;
       }
       else
       {
-        database::$state = "Query failed to return a PSO object";
-        return DATABASE_ERROR;
+        $this->pdo = null;
+        $this->pso = null;
+        $this->result = null;
+        $this->error_code = false;
+        $this->error_msg = "";
+
+        if($db_name == null)
+          $this->error_msg .= " Database name was missing! ";
+
+        if($host_ip == null)
+          $this->error_msg .= " MySQL Server IP was missing! ";
+
+        if($username == null)
+          $this->error_msg .= " Username was missing! ";
+
+        if($password == null)
+          $this->error_msg .= " Password was missing! ";
+
+        $this->state = "Not connected";
       }
-    }
-    else
-    {
-      database::$state = "Missing SQL Statement";
-      return DATABASE_ERROR;
-    }
-  }//end method database::_query()
 
-  //Note: this function is for performing INSERT, UPDATE, DELETE 
-  //Note: this function returns the number of rows affected or DATABASE_ERROR on failure
-  static public function execute($sql=null, $params=null)
-  {   
-    if(database::autoconnect())
-      return database::_execute($sql, $params);
-    else
-      return DATABASE_ERROR;
-  }//end method database::execute()
+      //regardless of success or failure return the current connection status
+      return $this->is_connected();
+    }
 
-  static private function _execute($sql=null, $params=null)
-  {   
-    if($sql != null && $params != null) //secure operation
-    {
-      database::$pso = database::$pdo->prepare($sql);
-      if(database::$pso !== false)
+    public function is_connected(){
+      if($this->pdo != null)
+        return true;
+      else
+        return false;
+    }
+
+    public function query($sql, $params=null){
+      
+      if(!$this->is_connected()){
+        $this->state = "Not Connected to the database";
+        return false;
+      }
+
+      //Perform a secure query
+      if($sql != null && $params != null)
       {
-        database::$pso->execute($params);
-        database::$result = database::$pso->rowCount(); //number of rows affected
-        database::$state = "Connected to the database";
-        return database::$result;
+        try
+        {
+          $this->pso = $this->pdo->prepare($sql);
+          if($this->pso !== false)
+          {
+            $this->pso->execute($params);
+            $this->result = $this->pso->fetchAll(); // return results as array
+            $this->state = "Connected to the database"; // generic "system ok" message
+            return $this->result;
+          }
+          else
+          {
+            return false;
+          }
+        }
+        catch(PDOException $e)
+        {
+          $this->error_code = $e->getCode;
+          $this->error_msg = $e->getMessage();
+          $this->state = "Exception occurred";
+        }
+        return false;
+      }
+      else if($sql != null && $params == null) //insecure query 
+      {
+        $this->pso = $this->pdo->query($sql); // this is NOT a prepared statement
+        if($this->pso !== false)
+        {
+          $this->result = $this->pso->fetchAll(); // return results as array
+          $this->state = "Connected to the database"; // generic "system ok" message
+          return $this->result;
+        }
+        else
+        {
+          $this->state = "Query failed to return a PSO object";
+          return false;
+        }
       }
       else
       {
-        database::$state = "Query failed to return a PSO object";
-        return DATABASE_ERROR;
-      }     
+        $this->state = "Missing SQL Statement";
+        return false;
+      }
     }
-    else if($sql != null && $params == null) // insecure operation... not a prepared statement
-    {
-      database::$result = database::$pdo->exec($sql);
-      database::$state = "Connected to the database";
-      return database::$result;
-    }
-    else
-    {
-      database::$state = "Missing SQL Statement";
-      return DATABASE_ERROR;
-    }
-  }//end private method database::_execute()
 
-}//end database class
+    function execute($sql=null, $params=null)
+    {   
+      if($sql != null && $params != null) //secure operation
+      {
+        $this->pso = $this->pdo->prepare($sql);
+        if($this->pso !== false)
+        {
+          $this->pso->execute($params);
+          $this->result = $this->pso->rowCount(); //number of rows affected
+          $this->state = "Connected to the database";
+          return $this->result;
+        }
+        else
+        {
+          $this->state = "Query failed to return a PSO object";
+          return false;
+        }     
+      }
+      else if($sql != null && $params == null) // insecure operation... not a prepared statement
+      {
+        $this->result = $this->pdo->exec($sql);
+        $this->state = "Connected to the database";
+        return $this->result;
+      }
+      else
+      {
+        $this->state = "Missing SQL Statement";
+        return false;
+      }
+    } 
+
+  }
