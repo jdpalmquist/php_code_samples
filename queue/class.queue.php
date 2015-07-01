@@ -15,8 +15,10 @@
     }
 
     public function pop(){
+      $val = $this->queue[0];
       array_splice($this->queue, 0, 1);
       $this->top--;
+      return $val;
     }
 
     public function empty_queue(){
