@@ -9,3 +9,7 @@
   $q->push('c');
 
   $q->print_queue();
+
+  $q->pop();
+
+  $q->print_queue();

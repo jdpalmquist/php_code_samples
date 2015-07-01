@@ -1,21 +1,21 @@
 <?php
 
-  class queue{
+  class stack{
     private $top;
-    private $queue;
+    private $stack;
 
     public function __construct(){
       $this->top = 0;
-      $this->queue = array();
+      $this->stack = array();
     }
 
     public function push($x){
-      array_push($this->queue, $x);
+      array_push($this->stack, $x);
       $this->top++;
     }
 
     public function pop(){
-      array_splice($this->queue, 0, 1);
+      array_splice($this->stack, ($this->top - 1), 1);
       $this->top--;
     }
 
@@ -25,7 +25,7 @@
       }
     }
 
-    public function print_queue(){
-      echo print_r($this->queue,true);
+    public function print_stack(){
+      echo print_r($this->stack,true);
     }
   }
